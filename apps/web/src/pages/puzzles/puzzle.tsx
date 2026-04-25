@@ -1,28 +1,31 @@
-import { Chessground } from "@lichess-org/chessground";
-import { useEffect, useRef } from "react";
+import { Spacer } from "@awlt/design";
+import clsx from "clsx";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 
 import usePuzzle from "@/hooks/usePuzzle";
+import { PuzzleBoard } from "@/puzzle-board";
 
 const PuzzlePage = () => {
   const { id } = useParams();
   const ref = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<PuzzleBoard | null>(null);
+  const [, forceUpdate] = useState(0);
 
   const query = usePuzzle(id);
 
   useEffect(() => {
-    console.log(ref.current);
-    if (!ref.current) {
+    if (!ref.current || !query.data) {
       return;
     }
 
-    console.log("creating thing");
-
-    const ground = Chessground(ref.current, {});
-    console.log({ ground });
+    const board = new PuzzleBoard(ref.current, query.data);
+    board.onUpdate = () => forceUpdate((n) => n + 1);
+    boardRef.current = board;
+    forceUpdate((n) => n + 1);
 
     return () => {
-      ground.destroy();
+      boardRef.current = null;
     };
   }, [ref, query.data]);
 
@@ -30,13 +33,26 @@ const PuzzlePage = () => {
     return <p>Loading...</p>;
   }
 
-  console.log(query.data);
+  const board = boardRef.current;
 
   return (
-    <div ref={ref} className="blue merida grid">
-      <div>
-        <p>Hello</p>
-      </div>
+    <div className="grid">
+      <div ref={ref} className="blue merida" />
+      <Spacer size="4" />
+      <p
+        className={clsx(
+          "text-xl font-semibold",
+          board?.puzzleState === "findmove" && "text-(--gray-12)",
+          board?.puzzleState === "correct" && "text-(--green-11)",
+          board?.puzzleState === "wrong" && "text-(--red-11)",
+          board?.puzzleState === "solved" && "text-(--blue-11)",
+        )}
+      >
+        {board?.puzzleState === "findmove" && "Find the best move"}
+        {board?.puzzleState === "correct" && "Correct!"}
+        {board?.puzzleState === "wrong" && "Wrong move."}
+        {board?.puzzleState === "solved" && "You solved the puzzle!"}
+      </p>
     </div>
   );
 };
