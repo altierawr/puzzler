@@ -23,6 +23,7 @@ export type RootMove = {
 
 export type Move = {
   san: string;
+  isSolved?: boolean;
   nags?: number[];
   children: Move[];
   sidelineDepth: number;
@@ -31,6 +32,7 @@ export type Move = {
 
 export class PuzzleBoard {
   puzzleState: PuzzleState = "findmove";
+  isInVariation: boolean = false;
   private moveTimeout: number | null = null;
   private startPos: Chess;
   private position: Chess;
@@ -43,7 +45,7 @@ export class PuzzleBoard {
     rootElement.addEventListener("mousedown", () => preloadSounds(), { once: true });
     setVolume(0.3);
 
-    const OBSERVABLE_KEYS = new Set(["puzzleState"]);
+    const OBSERVABLE_KEYS = new Set(["puzzleState", "isInVariation"]);
     const proxy = new Proxy(this, {
       set(target, key, value) {
         target[key as keyof typeof target] = value;
@@ -59,6 +61,8 @@ export class PuzzleBoard {
 
       ${puzzle.moves}
     `;
+
+    console.log(puzzle.fen);
 
     const setup = parseFen(puzzle.fen).unwrap();
     const game = parsePgn(pgnStr)[0];
@@ -128,6 +132,89 @@ export class PuzzleBoard {
     });
   }
 
+  returnFromVariation() {
+    for (;;) {
+      if (!("san" in this.moveTreePos)) {
+        break;
+      }
+
+      if (!this.moveTreePos.previousMove) {
+        break;
+      }
+
+      this.moveTreePos = this.moveTreePos.previousMove;
+      if (!("san" in this.moveTreePos)) {
+        break;
+      }
+
+      const moveHistory = this.getSanMoveHistoryForPos(this.moveTreePos);
+      this.position = this.startPos.clone();
+
+      for (const san of moveHistory) {
+        const sanMove = parseSan(this.position, san);
+        if (!sanMove) {
+          console.error("invalid san move", sanMove);
+          break;
+        }
+
+        this.position.play(sanMove);
+      }
+
+      // we only do variations of opponent moves
+      if (this.position.turn === this.playerSide) {
+        continue;
+      }
+
+      let opponentMove: Move | null = null;
+      for (let i = this.moveTreePos.children.length - 1; i >= 0; i--) {
+        const variation = this.moveTreePos.children[i];
+
+        if (!variation.isSolved) {
+          this.moveTreePos.children[i].isSolved = true;
+          opponentMove = variation;
+          break;
+        }
+      }
+
+      if (!opponentMove) {
+        continue;
+      }
+
+      const opponentMoveNormal = parseSan(this.position, opponentMove.san);
+      if (!opponentMoveNormal) {
+        console.error("Opponent move is invalid");
+        return;
+      }
+
+      this.disableGroundMoves();
+      this.updateGround();
+
+      this.moveTimeout = setTimeout(() => {
+        let isCapture = this.position.board.get(opponentMoveNormal.to) !== undefined;
+
+        if (isCapture) {
+          playCapture();
+        } else {
+          playMove();
+        }
+
+        this.position.play(opponentMoveNormal);
+        this.updateGround(opponentMoveNormal);
+
+        this.moveTreePos = opponentMove;
+
+        this.isInVariation = opponentMove.sidelineDepth > 0;
+        this.puzzleState = "findmove";
+        this.enableGroundMoves();
+
+        if (this.moveTreePos.children.length === 0) {
+          this.puzzleState = "solved";
+        }
+      }, 500);
+      break;
+    }
+  }
+
   private handleBoardMove(orig: Key, dest: Key) {
     const move: NormalMove = {
       from: parseSquare(orig)!,
@@ -147,7 +234,12 @@ export class PuzzleBoard {
     }
 
     if (isCorrectMove) {
+      const wasSolved = "san" in this.moveTreePos && this.moveTreePos.isSolved;
       this.moveTreePos = this.moveTreePos.children[0];
+
+      if ("san" in this.moveTreePos) {
+        this.moveTreePos.isSolved = wasSolved;
+      }
     }
 
     const isSolved = isCorrectMove && this.moveTreePos.children.length === 0;
@@ -195,7 +287,21 @@ export class PuzzleBoard {
       this.puzzleState = "correct";
 
       this.moveTimeout = setTimeout(() => {
-        const opponentMove = this.moveTreePos.children[0];
+        const opponentMoves = this.moveTreePos.children;
+        let opponentMove = opponentMoves[0];
+
+        for (let i = opponentMoves.length - 1; i >= 0; i--) {
+          const variation = opponentMoves[i];
+
+          if (!variation.isSolved) {
+            opponentMove = variation;
+            this.moveTreePos.children[i].isSolved = true;
+
+            this.isInVariation = opponentMove.sidelineDepth > 0;
+            break;
+          }
+        }
+
         const opponentMoveNormal = parseSan(this.position, opponentMove.san);
         if (!opponentMoveNormal) {
           console.error("Opponent move is invalid");
@@ -213,10 +319,18 @@ export class PuzzleBoard {
         this.position.play(opponentMoveNormal);
         this.updateGround(opponentMoveNormal);
 
+        const wasSolved = "san" in opponentMove && opponentMove.isSolved;
         this.moveTreePos = opponentMove;
+        if ("san" in this.moveTreePos) {
+          this.moveTreePos.isSolved = wasSolved;
+        }
 
         this.puzzleState = "findmove";
         this.enableGroundMoves();
+
+        if (this.moveTreePos.children.length === 0) {
+          this.puzzleState = "solved";
+        }
       }, 500);
     }
   }
@@ -259,6 +373,7 @@ export class PuzzleBoard {
       nags: node.data.nags,
       children: [],
       sidelineDepth,
+      isSolved: false,
     };
 
     for (let i = 0; i < node.children.length; i++) {

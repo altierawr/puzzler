@@ -1,4 +1,4 @@
-import { Spacer } from "@awlt/design";
+import { Button, Spacer } from "@awlt/design";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
@@ -51,8 +51,17 @@ const PuzzlePage = () => {
         {board?.puzzleState === "findmove" && "Find the best move"}
         {board?.puzzleState === "correct" && "Correct!"}
         {board?.puzzleState === "wrong" && "Wrong move."}
-        {board?.puzzleState === "solved" && "You solved the puzzle!"}
+        {board?.puzzleState === "solved" && !board.isInVariation && "You solved the puzzle!"}
+        {board?.puzzleState === "solved" && board.isInVariation && "Variation solved."}
       </p>
+
+      {board?.puzzleState === "solved" && board.isInVariation && (
+        <Button onClick={() => board.returnFromVariation()} className="w-[250px]">
+          Return from variation
+        </Button>
+      )}
+
+      {board?.isInVariation && <p className="text-xl text-(--blue-11)">Variation</p>}
     </div>
   );
 };
