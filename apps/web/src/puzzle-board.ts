@@ -13,6 +13,7 @@ import { makeSquare, parseSquare } from "chessops/util";
 import { isPromotion, toDests } from "@/utils/chess";
 
 import type { Puzzle } from "./types";
+import { playCapture, playMove, preloadSounds, setVolume } from "./utils/sounds";
 
 export type PuzzleState = "findmove" | "correct" | "wrong" | "variation" | "solved";
 
@@ -39,6 +40,9 @@ export class PuzzleBoard {
   onUpdate?: () => void;
 
   constructor(rootElement: HTMLDivElement, puzzle: Puzzle) {
+    rootElement.addEventListener("mousedown", () => preloadSounds(), { once: true });
+    setVolume(0.3);
+
     const OBSERVABLE_KEYS = new Set(["puzzleState"]);
     const proxy = new Proxy(this, {
       set(target, key, value) {
@@ -147,6 +151,13 @@ export class PuzzleBoard {
     }
 
     const isSolved = isCorrectMove && this.moveTreePos.children.length === 0;
+    let isCapture = this.position.board.get(move.to) !== undefined;
+
+    if (isCapture) {
+      playCapture();
+    } else {
+      playMove();
+    }
 
     this.position.play(move);
     this.updateGround(move);
@@ -189,6 +200,14 @@ export class PuzzleBoard {
         if (!opponentMoveNormal) {
           console.error("Opponent move is invalid");
           return;
+        }
+
+        let isCapture = this.position.board.get(opponentMoveNormal.to) !== undefined;
+
+        if (isCapture) {
+          playCapture();
+        } else {
+          playMove();
         }
 
         this.position.play(opponentMoveNormal);
