@@ -35,6 +35,7 @@ export class PuzzleBoard {
   private position: Chess;
   private ground: Api;
   private moveTreePos: Move | RootMove;
+  private playerSide: "black" | "white";
   onUpdate?: () => void;
 
   constructor(rootElement: HTMLDivElement, puzzle: Puzzle) {
@@ -62,6 +63,7 @@ export class PuzzleBoard {
     this.startPos = Chess.fromSetup(setup).unwrap();
     this.position = this.startPos.clone();
     this.moveTreePos = this.movesToTree(game.moves);
+    this.playerSide = setup.turn;
 
     for (const node of game.moves.mainline()) {
       const move = parseSan(pgn, node.san);
@@ -92,16 +94,33 @@ export class PuzzleBoard {
     return proxy;
   }
 
-  private updateGround(pos: Chess, lastMove?: ChessopsMove, config?: Config) {
+  private updateGround(lastMove?: ChessopsMove, config?: Config) {
     this.ground?.set({
-      fen: makeFen(pos.toSetup()),
-      turnColor: pos.turn,
+      fen: makeFen(this.position.toSetup()),
+      turnColor: this.position.turn,
       lastMove: lastMove && "from" in lastMove ? [makeSquare(lastMove.from), makeSquare(lastMove.to)] : [],
       movable: {
-        color: pos.turn,
-        dests: toDests(pos),
+        color: this.position.turn,
+        dests: toDests(this.position),
       },
       ...config,
+    });
+  }
+
+  private disableGroundMoves() {
+    this.ground.set({
+      movable: {
+        color: undefined,
+      },
+    });
+  }
+
+  private enableGroundMoves() {
+    this.ground.set({
+      movable: {
+        color: this.position.turn,
+        dests: toDests(this.position),
+      },
     });
   }
 
@@ -130,18 +149,8 @@ export class PuzzleBoard {
     const isSolved = isCorrectMove && this.moveTreePos.children.length === 0;
 
     this.position.play(move);
-    this.updateGround(
-      this.position,
-      move,
-      isSolved || !isCorrectMove
-        ? {
-            movable: {
-              color: undefined,
-              dests: new Map<Key, Key[]>(),
-            },
-          }
-        : undefined,
-    );
+    this.updateGround(move);
+    this.disableGroundMoves();
 
     if (this.moveTimeout) {
       clearTimeout(this.moveTimeout);
@@ -167,7 +176,7 @@ export class PuzzleBoard {
       this.puzzleState = "wrong";
       this.moveTimeout = setTimeout(() => {
         this.puzzleState = "findmove";
-        this.updateGround(this.position, lastMove);
+        this.updateGround(lastMove);
       }, 500);
     } else if (isSolved) {
       this.puzzleState = "solved";
@@ -175,7 +184,20 @@ export class PuzzleBoard {
       this.puzzleState = "correct";
 
       this.moveTimeout = setTimeout(() => {
+        const opponentMove = this.moveTreePos.children[0];
+        const opponentMoveNormal = parseSan(this.position, opponentMove.san);
+        if (!opponentMoveNormal) {
+          console.error("Opponent move is invalid");
+          return;
+        }
+
+        this.position.play(opponentMoveNormal);
+        this.updateGround(opponentMoveNormal);
+
+        this.moveTreePos = opponentMove;
+
         this.puzzleState = "findmove";
+        this.enableGroundMoves();
       }, 500);
     }
   }
