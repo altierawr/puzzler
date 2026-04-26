@@ -15,7 +15,7 @@ import { isPromotion, toDests } from "@/utils/chess";
 import type { Puzzle } from "./types";
 import { playCapture, playMove, preloadSounds, setVolume } from "./utils/sounds";
 
-export type PuzzleState = "findmove" | "correct" | "wrong" | "variation" | "solved";
+export type PuzzleState = "findmove" | "correct" | "wrong" | "variation" | "solved" | "goodmove" | "badmove";
 
 export type RootMove = {
   children: Move[];
@@ -27,7 +27,7 @@ export type Move = {
   nags?: number[];
   children: Move[];
   sidelineDepth: number;
-  previousMove?: Move;
+  previousMove?: Move | RootMove;
 };
 
 export class PuzzleBoard {
@@ -62,7 +62,7 @@ export class PuzzleBoard {
       ${puzzle.moves}
     `;
 
-    console.log(puzzle.fen);
+    console.log("puzzle", puzzle.fen);
 
     const setup = parseFen(puzzle.fen).unwrap();
     const game = parsePgn(pgnStr)[0];
@@ -86,6 +86,7 @@ export class PuzzleBoard {
     this.ground = Chessground(rootElement, {
       fen: puzzle.fen,
       orientation: setup.turn,
+      turnColor: setup.turn,
       movable: {
         free: false,
         color: setup.turn,
@@ -130,6 +131,42 @@ export class PuzzleBoard {
         dests: toDests(this.position),
       },
     });
+  }
+
+  returnFromGoodOrBadMove() {
+    if (!("san" in this.moveTreePos)) {
+      console.error("san not found in the tree position");
+      return;
+    }
+
+    let targetMove = this.moveTreePos.previousMove;
+    console.log(this.moveTreePos);
+
+    if (this.puzzleState === "badmove" && targetMove && "san" in targetMove) {
+      targetMove = targetMove.previousMove;
+    }
+
+    if (!targetMove) {
+      console.error("target move not found when returning from good or bad move");
+      return;
+    }
+
+    const moveHistory = this.getSanMoveHistoryForPos(targetMove);
+    this.position = this.startPos.clone();
+
+    for (const san of moveHistory) {
+      const sanMove = parseSan(this.position, san);
+      if (!sanMove) {
+        console.error("invalid san move", sanMove);
+        break;
+      }
+
+      this.position.play(sanMove);
+    }
+
+    this.moveTreePos = targetMove;
+    this.updateGround();
+    this.puzzleState = "findmove";
   }
 
   returnFromVariation() {
@@ -243,16 +280,8 @@ export class PuzzleBoard {
     }
 
     const isSolved = isCorrectMove && this.moveTreePos.children.length === 0;
-    let isCapture = this.position.board.get(move.to) !== undefined;
 
-    if (isCapture) {
-      playCapture();
-    } else {
-      playMove();
-    }
-
-    this.position.play(move);
-    this.updateGround(move);
+    this.playMove(move);
     this.disableGroundMoves();
 
     if (this.moveTimeout) {
@@ -260,6 +289,45 @@ export class PuzzleBoard {
     }
 
     if (!isCorrectMove) {
+      let moveInTree: Move | null = null;
+      let moveType: PuzzleState | null = null;
+      for (const move of this.moveTreePos.children) {
+        if (move.san === san) {
+          moveInTree = move;
+
+          if (move.nags?.includes(98)) {
+            moveType = "goodmove";
+          } else if (move.nags?.includes(97) && move.children.length > 0) {
+            moveType = "badmove";
+          }
+
+          break;
+        }
+      }
+
+      if (moveInTree && moveType) {
+        this.puzzleState = moveType;
+        this.moveTreePos = moveInTree;
+
+        if (moveType === "badmove") {
+          const followupMove = this.moveTreePos.children[0];
+
+          setTimeout(() => {
+            const move = parseSan(this.position, followupMove.san);
+            if (!move) {
+              console.error("can't play move", moveInTree.san);
+              return;
+            }
+
+            this.moveTreePos = followupMove;
+            this.playMove(move);
+            this.disableGroundMoves();
+          }, 250);
+        }
+
+        return;
+      }
+
       const moveHistory = this.getSanMoveHistoryForPos(this.moveTreePos);
       this.position = this.startPos.clone();
 
@@ -335,6 +403,19 @@ export class PuzzleBoard {
     }
   }
 
+  private playMove(move: ChessopsMove) {
+    let isCapture = this.position.board.get(move.to) !== undefined;
+
+    if (isCapture) {
+      playCapture();
+    } else {
+      playMove();
+    }
+
+    this.position.play(move);
+    this.updateGround(move);
+  }
+
   private getSanMoveHistoryForPos(move: RootMove | Move): string[] {
     return this.getSanMoveHistoryForPosImpl(move).reverse();
   }
@@ -356,15 +437,16 @@ export class PuzzleBoard {
   }
 
   private movesToTree(node: Node<PgnNodeData>): RootMove {
-    const moves: Move[] = [];
+    let rootMove: RootMove = {
+      children: [],
+    };
 
     for (let i = 0; i < node.children.length; i++) {
-      moves.push(this.childMoveToTree(node.children[i], i > 0 ? 1 : 0));
+      rootMove.children.push(this.childMoveToTree(node.children[i], i > 0 ? 1 : 0));
+      rootMove.children[i].previousMove = rootMove;
     }
 
-    return {
-      children: moves,
-    };
+    return rootMove;
   }
 
   private childMoveToTree(node: ChildNode<PgnNodeData>, sidelineDepth: number = 0): Move {
