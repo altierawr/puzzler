@@ -1,6 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS citext;
 
+CREATE TYPE visibility as enum (
+  'public',
+  'unlisted',
+  'private'
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -22,7 +28,9 @@ CREATE TABLE IF NOT EXISTS tokens (
 CREATE TABLE IF NOT EXISTS collections (
   id text PRIMARY KEY NOT NULL UNIQUE,
   name text NOT NULL,
-  created_by uuid REFERENCES users(id)
+  visibility visibility NOT NULL DEFAULT 'unlisted',
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS puzzles (
@@ -30,7 +38,9 @@ CREATE TABLE IF NOT EXISTS puzzles (
   name text,
   fen text NOT NULL,
   moves text NOT NULL,
-  created_by uuid REFERENCES users(id)
+  visibility visibility NOT NULL DEFAULT 'unlisted',
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS collections_puzzles (

@@ -38,7 +38,7 @@ export class PuzzleBoard {
   private position: Chess;
   private ground: Api;
   private moveTreePos: Move | RootMove;
-  private playerSide: "black" | "white";
+  playerSide: "black" | "white";
   onUpdate?: () => void;
 
   constructor(rootElement: HTMLDivElement, puzzle: Puzzle) {
@@ -87,6 +87,7 @@ export class PuzzleBoard {
       fen: puzzle.fen,
       orientation: setup.turn,
       turnColor: setup.turn,
+      disableContextMenu: true,
       movable: {
         free: false,
         color: setup.turn,

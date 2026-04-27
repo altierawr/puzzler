@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import AccountPage from "./pages/account";
 import AppRoot from "./pages/app-root";
 import CollectionsPage from "./pages/collections";
+import CollectionPage from "./pages/collections/collection";
 import CreatePage from "./pages/create";
 import HomePage from "./pages/home";
 import LoginRegisterPage from "./pages/login-register";
@@ -41,6 +42,10 @@ const router = createBrowserRouter([
           {
             path: "/collections",
             element: <CollectionsPage />,
+          },
+          {
+            path: "/collections/:id",
+            element: <CollectionPage />,
           },
           {
             path: "/create",

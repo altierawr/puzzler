@@ -1,31 +1,27 @@
-import { Button, Dialog, IconButton, Input, Spacer } from "@awlt/design";
+import { Button, Dialog, IconButton, Input, Spacer, toastManager } from "@awlt/design";
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import useCollectionActions from "@/hooks/useCollectionActions";
 import { isHttpError } from "@/utils/http-error";
 
 const CollectionsPage = () => {
   const [collectionName, setCollectionName] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { createCollection } = useCollectionActions();
 
   const handleCollectionCreate = async () => {
     setFieldError(null);
     setFormError(null);
 
     try {
-      // const playlist = await createPlaylist(playlistName);
-      // toastManager.add({
-      //   title: "Created playlist",
-      //   description: `Playlist ${playlist.name} was created!`,
-      //   type: "success",
-      //   actionProps: {
-      //     children: "View playlist",
-      //     onClick: () => {
-      //       navigate(`/playlists/${playlist.id}`);
-      //     },
-      //   },
-      // });
+      const collection = await createCollection(collectionName);
+      toastManager.add({
+        title: "Created collection",
+        description: `Collection ${collection.name} was created!`,
+        type: "success",
+      });
     } catch (error) {
       if (isHttpError<{ error?: Record<string, string> }>(error)) {
         if (error.status === 422 && error.data?.error?.name) {

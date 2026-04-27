@@ -4,6 +4,7 @@
 @import "@awlt/design/colors/green.css";
 @import "@awlt/design/colors/yellow.css";
 @import "@awlt/design/colors/red.css";
+@import "@awlt/design/colors/orange.css";
 @import "@awlt/design/styles.css";
 
 @theme {
@@ -115,8 +116,10 @@ img {
  */
 
 .cg-wrap {
-  width: 540px;
-  height: 540px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 500px;
+  max-height: 500px;
   position: relative;
   display: block;
 }
@@ -244,6 +247,10 @@ cg-board piece.fading {
 
 .cg-wrap piece.ghost {
   opacity: 0.3;
+}
+
+.cg-custom-below {
+  display: none;
 }
 
 .cg-wrap .cg-shapes,

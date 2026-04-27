@@ -105,6 +105,7 @@ const CreatePage = () => {
       <h1 className="text-2xl font-semibold">Create puzzles</h1>
       <Spacer size="8" />
       <h2 className="mb-2 text-lg font-medium">Import PGNs</h2>
+      <p className="text-(--red-11)">Note: this is only available to site admins for now!</p>
       <textarea ref={textAreaRef} className="h-[400px] resize-none border border-(--gray-6)"></textarea>
       <Spacer size="2" />
       <Button className="w-[130px]" onClick={handleImportClick}>

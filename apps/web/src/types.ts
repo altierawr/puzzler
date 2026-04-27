@@ -4,3 +4,9 @@ export type Puzzle = {
   fen: string;
   moves: string;
 };
+
+export type Collection = {
+  id: string;
+  name: string;
+  puzzles: Puzzle[];
+};

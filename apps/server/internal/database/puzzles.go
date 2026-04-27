@@ -21,7 +21,10 @@ func (db *DB) InsertPuzzles(puzzles []data.Puzzle) error {
 	}
 	defer tx.Rollback()
 
-	for _, puzzle := range puzzles {
+	baseTime := time.Now()
+
+	for i, puzzle := range puzzles {
+		puzzle.CreatedAt = baseTime.Add(time.Duration(i) * time.Microsecond)
 		err := db.InsertPuzzle(&puzzle, tx)
 		if err != nil {
 			return err
@@ -40,8 +43,8 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO puzzles (id, name, fen, moves, created_by)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO puzzles (id, name, fen, moves, created_by, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
 	id, err := utils.GenerateAlphabeticId(8)
@@ -49,7 +52,7 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 		return err
 	}
 
-	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.CreatedById}
+	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.CreatedById, puzzle.CreatedAt}
 
 	if tx != nil {
 		_, err = tx.ExecContext(ctx, query, args...)

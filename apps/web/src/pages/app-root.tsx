@@ -1,4 +1,4 @@
-import { Toast } from "@awlt/design";
+import { Spacer, Toast } from "@awlt/design";
 import { useRef } from "react";
 import { Outlet } from "react-router";
 
@@ -29,7 +29,7 @@ const AppRoot = () => {
                 }}
               >
                 <div className="col-[breakout]! grid grid-cols-subgrid *:col-[content]">
-                  <Navbar scrollRef={scrollRef} />
+                  <Spacer size="4" />
                   <Outlet />
                 </div>
               </main>
