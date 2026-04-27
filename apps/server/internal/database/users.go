@@ -235,7 +235,7 @@ func (db *DB) GetUserForToken(tokenScope, tokenPlaintext string) (*data.User, er
 
 	tokenHash := data.GetTokenHash(tokenPlaintext)
 
-	args := []any{tokenHash, tokenScope, time.Now().Unix()}
+	args := []any{tokenHash, tokenScope, time.Now()}
 
 	var user data.User
 

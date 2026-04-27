@@ -85,7 +85,7 @@ func (db *DB) IsTokenValid(tokenScope, tokenPlaintext string) (bool, error) {
 
 	tokenHash := data.GetTokenHash(tokenPlaintext)
 
-	args := []any{tokenHash, tokenScope, time.Now().Unix()}
+	args := []any{tokenHash, tokenScope, time.Now()}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
