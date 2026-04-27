@@ -6,6 +6,7 @@ import CollectionsPage from "./pages/collections";
 import CollectionPage from "./pages/collections/collection";
 import CreatePage from "./pages/create";
 import HomePage from "./pages/home";
+import InvitePage from "./pages/invite";
 import LoginRegisterPage from "./pages/login-register";
 import PuzzlePage from "./pages/puzzles/puzzle";
 import Root from "./pages/root";
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
           {
             path: "account",
             element: <AccountPage />,
+          },
+          {
+            path: "invite",
+            element: <InvitePage />,
           },
         ],
       },
