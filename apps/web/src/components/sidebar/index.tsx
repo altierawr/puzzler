@@ -1,14 +1,6 @@
 import { Menu, Sidebar as AwltSidebar } from "@awlt/design";
 import { Facehash } from "facehash";
-import {
-  ChessKingIcon,
-  ChessPawnIcon,
-  ChevronsUpDownIcon,
-  LibraryIcon,
-  LogOutIcon,
-  PencilIcon,
-  SettingsIcon,
-} from "lucide-react";
+import { ChessKingIcon, ChevronsUpDownIcon, LibraryIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 
 import useCurrentUser, { invalidateUserQuery } from "../../hooks/useCurrentUser";
@@ -68,24 +60,24 @@ const Sidebar = () => {
             </AwltSidebar.GroupHeader>
 
             <AwltSidebar.List>
-              <AwltSidebar.Item tooltip="Puzzles">
+              {/*<AwltSidebar.Item tooltip="Puzzles">
                 <AwltSidebar.ItemButton isActive={pathname === "/puzzles"} onClick={() => navigate("/puzzles")}>
                   <ChessPawnIcon />
                   <span>Puzzles</span>
                 </AwltSidebar.ItemButton>
-              </AwltSidebar.Item>
+              </AwltSidebar.Item>*/}
               <AwltSidebar.Item tooltip="Collections">
                 <AwltSidebar.ItemButton isActive={pathname === "/collections"} onClick={() => navigate("/collections")}>
                   <LibraryIcon />
                   <span>Collections</span>
                 </AwltSidebar.ItemButton>
               </AwltSidebar.Item>
-              <AwltSidebar.Item tooltip="Create">
+              {/*<AwltSidebar.Item tooltip="Create">
                 <AwltSidebar.ItemButton isActive={pathname === "/create"} onClick={() => navigate("/create")}>
                   <PencilIcon />
                   <span>Create</span>
                 </AwltSidebar.ItemButton>
-              </AwltSidebar.Item>
+              </AwltSidebar.Item>*/}
             </AwltSidebar.List>
           </AwltSidebar.Group>
         </AwltSidebar.Content>

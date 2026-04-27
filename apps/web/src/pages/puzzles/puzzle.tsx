@@ -1,12 +1,17 @@
 import { Button, IconButton, Spacer } from "@awlt/design";
 import clsx from "clsx";
-import { ChevronLeft, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import usePuzzle from "@/hooks/usePuzzle";
 import { PuzzleBoard } from "@/puzzle-board";
 import { request } from "@/utils/http";
+
+const Wrapper = () => {
+  const { id } = useParams();
+  return <PuzzlePage key={id} />;
+};
 
 const PuzzlePage = () => {
   const { id, collectionId } = useParams();
@@ -89,7 +94,7 @@ const PuzzlePage = () => {
   return (
     <div className="grid w-full">
       <div className="flex w-full flex-col items-center">
-        <div className="flex w-full max-w-[500px] items-center justify-between">
+        <div className="flex w-full max-w-[500px] items-center justify-between gap-4">
           <IconButton
             isDisabled={!puzzle.previousPuzzleId}
             color="gray"
@@ -99,7 +104,9 @@ const PuzzlePage = () => {
           >
             <ChevronLeftIcon />
           </IconButton>
-          <h1 className="text-xl font-semibold tracking-wider text-(--gray-12)">{puzzle.name}</h1>
+          <h1 className="max-w-[330px] text-center text-xl font-semibold tracking-wider text-(--gray-12)">
+            {puzzle.name}
+          </h1>
           <IconButton
             isDisabled={!puzzle.nextPuzzleId}
             color="gray"
@@ -152,9 +159,17 @@ const PuzzlePage = () => {
             Continue
           </Button>
         )}
+
+        <Spacer size="8" />
+
+        {collectionId && (
+          <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
+            Back to collection
+          </Button>
+        )}
       </div>
     </div>
   );
 };
 
-export default PuzzlePage;
+export default Wrapper;

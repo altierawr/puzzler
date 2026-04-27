@@ -33,6 +33,20 @@ func (db *DB) CreateCollection(userId uuid.UUID, name string) (*data.Collection,
 	}, nil
 }
 
+func (db *DB) GetCollections() (*[]data.Collection, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	collectionQuery := `
+		SELECT * FROM collections
+	`
+
+	collections := []data.Collection{}
+	err := db.SelectContext(ctx, &collections, collectionQuery)
+
+	return &collections, err
+}
+
 func (db *DB) GetCollection(id string, userId uuid.UUID) (*data.Collection, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

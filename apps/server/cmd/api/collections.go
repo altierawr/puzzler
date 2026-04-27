@@ -117,3 +117,22 @@ func (app *application) getCollectionHandler(w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) getCollectionsHandler(w http.ResponseWriter, r *http.Request) {
+	collections, err := app.db.GetCollections()
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, collections, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

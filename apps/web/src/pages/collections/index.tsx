@@ -1,8 +1,10 @@
 import { Button, Dialog, IconButton, Input, Spacer, toastManager } from "@awlt/design";
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import useCollectionActions from "@/hooks/useCollectionActions";
+import useCollections from "@/hooks/useCollections";
 import { isHttpError } from "@/utils/http-error";
 
 const CollectionsPage = () => {
@@ -10,6 +12,7 @@ const CollectionsPage = () => {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const { createCollection } = useCollectionActions();
+  const collections = useCollections();
 
   const handleCollectionCreate = async () => {
     setFieldError(null);
@@ -74,6 +77,20 @@ const CollectionsPage = () => {
         </Dialog.Root>
       </div>
       <Spacer size="8" />
+
+      {collections.data && (
+        <div className="grid w-full gap-2">
+          {collections.data.map((collection) => (
+            <Link
+              to={`/collections/${collection.id}`}
+              key={collection.id}
+              className="w-full! rounded-md bg-(--gray-3) px-5 py-3"
+            >
+              <p>{collection.name}</p>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

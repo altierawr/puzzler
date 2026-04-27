@@ -26,9 +26,10 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/invitecode", app.requireAdminUser(app.createInviteTokenHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/puzzles", app.requireAdminUser(app.importPuzzlePGNsHandler))
-	router.HandlerFunc(http.MethodGet, "/v1/puzzles/:id", app.getPuzzleHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/puzzles/:id", app.requireAuthenticatedUser(app.getPuzzleHandler))
 	router.HandlerFunc(http.MethodPost, "/v1/puzzles/:id/updatestatus", app.requireAuthenticatedUser(app.updatePuzzleSolveStatusHandler))
 
+	router.HandlerFunc(http.MethodGet, "/v1/collections", app.requireAuthenticatedUser(app.getCollectionsHandler))
 	router.HandlerFunc(http.MethodPost, "/v1/collections", app.requireAdminUser(app.createCollectionHandler))
 	router.HandlerFunc(http.MethodGet, "/v1/collections/:id", app.requireAuthenticatedUser(app.getCollectionHandler))
 	router.HandlerFunc(http.MethodGet, "/v1/collections/:id/puzzles/:puzzleId", app.requireAuthenticatedUser(app.getCollectionPuzzleHandler))
