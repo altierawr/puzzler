@@ -2,7 +2,6 @@ import { Spacer, Toast } from "@awlt/design";
 import { useRef } from "react";
 import { Outlet } from "react-router";
 
-import Navbar from "../components/navbar";
 import Sidebar from "../components/sidebar";
 import useScrollRestoration from "../hooks/useScrollRestoration";
 

@@ -16,7 +16,7 @@ const Board = ({ fen }: TProps) => {
 
     const setup = parseFen(fen).unwrap();
 
-    const ground = Chessground(ref.current, {
+    Chessground(ref.current, {
       fen: fen,
       orientation: setup.turn,
       viewOnly: true,
