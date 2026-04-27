@@ -1,7 +1,7 @@
 import { Spacer } from "@awlt/design";
+import clsx from "clsx";
 import { Link, useParams } from "react-router";
 
-import Board from "@/components/board";
 import useCollection from "@/hooks/useCollection";
 
 const CollectionPage = () => {
@@ -27,8 +27,16 @@ const CollectionPage = () => {
       <Spacer size="2" />
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(40px,1fr))] gap-1">
         {collection.puzzles.slice(0, 222).map((puzzle, index) => (
-          <Link key={puzzle.id} to={`/puzzles/${puzzle.id}`} className="aspect-square w-full!">
-            <div className="grid h-full w-full place-items-center bg-(--gray-3)">{index + 1}</div>
+          <Link key={puzzle.id} to={`/collections/${id}/puzzles/${puzzle.id}`} className="aspect-square w-full!">
+            <div
+              className={clsx(
+                "grid h-full w-full place-items-center bg-(--gray-3)",
+                puzzle.solveStatus === "fail" && "bg-(--red-3)",
+                puzzle.solveStatus === "success" && "bg-(--green-3)",
+              )}
+            >
+              {index + 1}
+            </div>
           </Link>
         ))}
       </div>
@@ -39,8 +47,16 @@ const CollectionPage = () => {
       <Spacer size="2" />
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(40px,1fr))] gap-1">
         {collection.puzzles.slice(222, 984).map((puzzle, index) => (
-          <Link key={puzzle.id} to={`/puzzles/${puzzle.id}`} className="aspect-square w-full!">
-            <div className="grid h-full w-full place-items-center bg-(--gray-3)">{222 + index + 1}</div>
+          <Link key={puzzle.id} to={`/collections/${id}/puzzles/${puzzle.id}`} className="aspect-square w-full!">
+            <div
+              className={clsx(
+                "grid h-full w-full place-items-center bg-(--gray-3)",
+                puzzle.solveStatus === "fail" && "bg-(--red-3)",
+                puzzle.solveStatus === "success" && "bg-(--green-3)",
+              )}
+            >
+              {222 + index + 1}
+            </div>
           </Link>
         ))}
       </div>
@@ -51,8 +67,16 @@ const CollectionPage = () => {
       <Spacer size="2" />
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(40px,1fr))] gap-1">
         {collection.puzzles.slice(984).map((puzzle, index) => (
-          <Link key={puzzle.id} to={`/puzzles/${puzzle.id}`} className="aspect-square w-full!">
-            <div className="grid h-full w-full place-items-center bg-(--gray-3)">{984 + index + 1}</div>
+          <Link key={puzzle.id} to={`/collections/${id}/puzzles/${puzzle.id}`} className="aspect-square w-full!">
+            <div
+              className={clsx(
+                "grid h-full w-full place-items-center bg-(--gray-3)",
+                puzzle.solveStatus === "fail" && "bg-(--red-3)",
+                puzzle.solveStatus === "success" && "bg-(--green-3)",
+              )}
+            >
+              {984 + index + 1}
+            </div>
           </Link>
         ))}
       </div>

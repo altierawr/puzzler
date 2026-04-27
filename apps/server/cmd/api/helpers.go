@@ -17,6 +17,17 @@ import (
 
 var errRequestBodyReadTimeout = errors.New("request body read timeout")
 
+func (app *application) readStringParam(r *http.Request, name string) (string, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+
+	id := params.ByName(name)
+	if len(id) == 0 {
+		return "", errors.New(fmt.Sprintf("invalid string parameter %s", name))
+	}
+
+	return id, nil
+}
+
 func (app *application) readIDStringParam(r *http.Request) (string, error) {
 	params := httprouter.ParamsFromContext(r.Context())
 
@@ -88,7 +99,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data interf
 }
 
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
-	maxBytes := 1_048_576
+	maxBytes := 1_048_576 * 10
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
 
 	dec := json.NewDecoder(r.Body)

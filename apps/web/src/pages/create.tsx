@@ -88,7 +88,7 @@ const CreatePage = () => {
       return;
     }
 
-    const resp = await request("/puzzles/import", {
+    const resp = await request("/puzzles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pgns: pgns.join("\n") }),

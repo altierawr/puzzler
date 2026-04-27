@@ -1,18 +1,22 @@
-import { Button, Spacer } from "@awlt/design";
+import { Button, IconButton, Spacer } from "@awlt/design";
 import clsx from "clsx";
+import { ChevronLeft, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import usePuzzle from "@/hooks/usePuzzle";
 import { PuzzleBoard } from "@/puzzle-board";
+import { request } from "@/utils/http";
 
 const PuzzlePage = () => {
-  const { id } = useParams();
+  const { id, collectionId } = useParams();
   const ref = useRef<HTMLDivElement>(null);
   const boardRef = useRef<PuzzleBoard | null>(null);
   const [, forceUpdate] = useState(0);
+  const [updatedSolveState, setUpdatedSolveState] = useState(false);
+  const navigate = useNavigate();
 
-  const query = usePuzzle(id);
+  const query = usePuzzle(id, collectionId);
 
   useEffect(() => {
     if (!ref.current || !query.data) {
@@ -29,11 +33,54 @@ const PuzzlePage = () => {
     };
   }, [ref, query.data]);
 
+  useEffect(() => {
+    const state = boardRef.current?.puzzleState;
+
+    if (!state || updatedSolveState) {
+      return;
+    }
+
+    const updateSolveState = async () => {
+      let status: string | null = null;
+
+      if (state === "wrong" || state === "badmove") {
+        status = "fail";
+      } else if (state === "solved") {
+        status = "success";
+      } else {
+        return;
+      }
+
+      const resp = await request(`/puzzles/${id}/updatestatus`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+        }),
+      });
+
+      if (resp.ok) {
+        console.log("updated status to", status);
+        setUpdatedSolveState(true);
+        return;
+      }
+
+      console.error("failed to update status");
+
+      const json = await resp.json();
+      console.log({ json });
+    };
+
+    updateSolveState();
+  }, [boardRef.current?.puzzleState, updatedSolveState, id]);
+
   if (query.isLoading) {
-    return <p>Loading...</p>;
+    return null;
   }
 
-  if (!query.data) {
+  const puzzle = query.data;
+
+  if (!puzzle) {
     return <p>Failed to load puzzle :(</p>;
   }
 
@@ -42,7 +89,27 @@ const PuzzlePage = () => {
   return (
     <div className="grid w-full">
       <div className="flex w-full flex-col items-center">
-        <h1 className="text-xl font-semibold tracking-wider text-(--gray-12)">{query.data.name}</h1>
+        <div className="flex w-full max-w-[500px] items-center justify-between">
+          <IconButton
+            isDisabled={!puzzle.previousPuzzleId}
+            color="gray"
+            size="sm"
+            variant="soft"
+            onClick={() => navigate(`/collections/${collectionId}/puzzles/${puzzle.previousPuzzleId}`)}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
+          <h1 className="text-xl font-semibold tracking-wider text-(--gray-12)">{puzzle.name}</h1>
+          <IconButton
+            isDisabled={!puzzle.nextPuzzleId}
+            color="gray"
+            size="sm"
+            variant="soft"
+            onClick={() => navigate(`/collections/${collectionId}/puzzles/${puzzle.nextPuzzleId}`)}
+          >
+            <ChevronRightIcon />
+          </IconButton>
+        </div>
         <Spacer size="2" />
         <div ref={ref} className="blue merida" />
         <Spacer size="8" />

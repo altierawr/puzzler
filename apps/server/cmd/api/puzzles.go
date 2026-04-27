@@ -11,6 +11,52 @@ import (
 	"github.com/altierawr/puzzler/internal/database"
 )
 
+func (app *application) updatePuzzleSolveStatusHandler(w http.ResponseWriter, r *http.Request) {
+	userId := app.contextGetUserId(r)
+	if userId == nil {
+		app.invalidAuthenticationTokenResponse(w, r)
+		return
+	}
+
+	id, err := app.readIDStringParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	var input struct {
+		Status string `json:"status"`
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.handleReadJSONError(w, r, err)
+		return
+	}
+
+	if input.Status != "success" && input.Status != "partial" && input.Status != "fail" {
+		app.badRequestResponse(w, r, errors.New("status is invalid"))
+		return
+	}
+
+	err = app.db.SetPuzzleSolveStatus(id, *userId, input.Status)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, nil, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 func (app *application) getPuzzleHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDStringParam(r)
 	if err != nil {

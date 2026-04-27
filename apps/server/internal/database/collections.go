@@ -33,7 +33,7 @@ func (db *DB) CreateCollection(userId uuid.UUID, name string) (*data.Collection,
 	}, nil
 }
 
-func (db *DB) GetCollection(id string) (*data.Collection, error) {
+func (db *DB) GetCollection(id string, userId uuid.UUID) (*data.Collection, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -56,14 +56,17 @@ func (db *DB) GetCollection(id string) (*data.Collection, error) {
 		SELECT
 			p.id,
 			p.name,
-			p.fen
+			p.fen,
+			p.visibility,
+			ps.status
 		FROM collections_puzzles
 		JOIN puzzles p ON p.id = collections_puzzles.puzzles_id
+		LEFT JOIN puzzle_solves ps ON ps.puzzles_id = p.id AND ps.users_id = $2
 		WHERE collections_puzzles.collections_id = $1
 		ORDER BY p.created_at ASC
 	`
 
-	rows, err := db.QueryContext(ctx, puzzlesQuery, id)
+	rows, err := db.QueryContext(ctx, puzzlesQuery, id, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +79,8 @@ func (db *DB) GetCollection(id string) (*data.Collection, error) {
 			&puzzle.ID,
 			&puzzle.Name,
 			&puzzle.Fen,
+			&puzzle.Visibility,
+			&puzzle.SolveStatus,
 		)
 		if err != nil {
 			return nil, err

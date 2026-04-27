@@ -7,6 +7,12 @@ CREATE TYPE visibility as enum (
   'private'
 );
 
+CREATE TYPE solve_status as enum (
+  'success',
+  'partial',
+  'fail'
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -49,4 +55,13 @@ CREATE TABLE IF NOT EXISTS collections_puzzles (
   PRIMARY KEY (collections_id, puzzles_id),
   CONSTRAINT fk_collection FOREIGN KEY(collections_id) REFERENCES collections(id),
   CONSTRAINT fk_puzzle FOREIGN KEY(puzzles_id) REFERENCES puzzles(id)
+);
+
+CREATE TABLE IF NOT EXISTS puzzle_solves (
+  puzzles_id text,
+  users_id uuid,
+  status solve_status NOT NULL,
+  PRIMARY KEY (puzzles_id, users_id),
+  CONSTRAINT fk_puzzle FOREIGN KEY(puzzles_id) REFERENCES puzzles(id),
+  CONSTRAINT fk_user FOREIGN KEY(users_id) REFERENCES users(id)
 );

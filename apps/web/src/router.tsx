@@ -48,6 +48,10 @@ const router = createBrowserRouter([
             element: <CollectionPage />,
           },
           {
+            path: "/collections/:collectionId/puzzles/:id",
+            element: <PuzzlePage />,
+          },
+          {
             path: "/create",
             element: <CreatePage />,
           },

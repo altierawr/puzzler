@@ -56,14 +56,51 @@ func (app *application) createCollectionHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
-func (app *application) getCollectionHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getCollectionPuzzleHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDStringParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
 
-	collection, err := app.db.GetCollection(id)
+	puzzleId, err := app.readStringParam(r, "puzzleId")
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	puzzle, err := app.db.GetCollectionPuzzle(id, puzzleId)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, puzzle, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) getCollectionHandler(w http.ResponseWriter, r *http.Request) {
+	userId := app.contextGetUserId(r)
+	if userId == nil {
+		app.invalidAuthenticationTokenResponse(w, r)
+		return
+	}
+
+	id, err := app.readIDStringParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	collection, err := app.db.GetCollection(id, *userId)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrRecordNotFound):
