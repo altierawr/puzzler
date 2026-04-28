@@ -245,9 +245,9 @@ export class PuzzleBoard {
 
         if (this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
+          this.disableGroundMoves();
         } else {
           this.puzzleState = "findmove";
-          this.enableGroundMoves();
         }
       }, 500);
       break;
@@ -400,9 +400,9 @@ export class PuzzleBoard {
 
         if (this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
+          this.disableGroundMoves();
         } else {
           this.puzzleState = "findmove";
-          this.enableGroundMoves();
         }
       }, 500);
     }
