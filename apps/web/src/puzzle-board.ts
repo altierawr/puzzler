@@ -242,11 +242,12 @@ export class PuzzleBoard {
         this.moveTreePos = opponentMove;
 
         this.isInVariation = opponentMove.sidelineDepth > 0;
-        this.puzzleState = "findmove";
-        this.enableGroundMoves();
 
         if (this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
+        } else {
+          this.puzzleState = "findmove";
+          this.enableGroundMoves();
         }
       }, 500);
       break;
@@ -397,11 +398,11 @@ export class PuzzleBoard {
           this.moveTreePos.isSolved = wasSolved;
         }
 
-        this.puzzleState = "findmove";
-        this.enableGroundMoves();
-
         if (this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
+        } else {
+          this.puzzleState = "findmove";
+          this.enableGroundMoves();
         }
       }, 500);
     }
