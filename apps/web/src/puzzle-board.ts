@@ -125,14 +125,14 @@ export class PuzzleBoard {
     });
   }
 
-  private enableGroundMoves() {
-    this.ground.set({
-      movable: {
-        color: this.position.turn,
-        dests: toDests(this.position),
-      },
-    });
-  }
+  // private enableGroundMoves() {
+  //   this.ground.set({
+  //     movable: {
+  //       color: this.position.turn,
+  //       dests: toDests(this.position),
+  //     },
+  //   });
+  // }
 
   returnFromGoodOrBadMove() {
     if (!("san" in this.moveTreePos)) {
