@@ -362,7 +362,10 @@ export class PuzzleBoard {
         for (let i = opponentMoves.length - 1; i >= 0; i--) {
           const variation = opponentMoves[i];
 
-          if (!variation.isSolved) {
+          if (
+            !variation.isSolved &&
+            (variation.sidelineDepth === 0 || this.doesVariationEndWithUserMove(variation, false))
+          ) {
             opponentMove = variation;
             this.moveTreePos.children[i].isSolved = true;
 
@@ -402,6 +405,18 @@ export class PuzzleBoard {
         }
       }, 500);
     }
+  }
+
+  private doesVariationEndWithUserMove(variation: Move, isFirstMoveUserMove: boolean): boolean {
+    let depth = variation.sidelineDepth;
+    let currentVariation = variation;
+    let n = 1;
+    while (currentVariation.children.length > 0 && currentVariation.children[0].sidelineDepth === depth) {
+      currentVariation = currentVariation.children[0];
+      n++;
+    }
+
+    return isFirstMoveUserMove ? n % 2 === 1 : n % 2 === 0;
   }
 
   private playMove(move: ChessopsMove) {
