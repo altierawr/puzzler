@@ -11,6 +11,7 @@ type Puzzle struct {
 	Name             string    `db:"name" json:"name"`
 	Fen              string    `db:"fen" json:"fen"`
 	Moves            string    `db:"moves" json:"moves"`
+	Comments         *string   `db:"comments" json:"comments,omitempty"`
 	Visibility       string    `db:"visibility" json:"visibility"`
 	SolveStatus      *string   `json:"solveStatus,omitempty"`
 	CreatedAt        time.Time `db:"created_at" json:"createdAt"`

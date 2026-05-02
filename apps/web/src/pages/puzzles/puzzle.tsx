@@ -1,16 +1,16 @@
 import { Button, IconButton, Spacer } from "@awlt/design";
 import clsx from "clsx";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import usePuzzle from "@/hooks/usePuzzle";
 import { PuzzleBoard } from "@/puzzle-board";
+import type { Puzzle } from "@/types";
 import { request } from "@/utils/http";
 
 const Wrapper = () => {
-  const { id } = useParams();
-  return <PuzzlePage key={id} />;
+  return <PuzzlePage />;
 };
 
 const PuzzlePage = () => {
@@ -19,24 +19,37 @@ const PuzzlePage = () => {
   const boardRef = useRef<PuzzleBoard | null>(null);
   const [, forceUpdate] = useState(0);
   const [updatedSolveState, setUpdatedSolveState] = useState(false);
+  const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle | null>(null);
   const navigate = useNavigate();
 
   const query = usePuzzle(id, collectionId);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (!ref.current || !query.data) {
+    setUpdatedSolveState(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (query.data) {
+      setCurrentPuzzle(query.data);
+    }
+  }, [query.data]);
+
+  useEffect(() => {
+    if (!ref.current || !currentPuzzle) {
       return;
     }
 
-    const board = new PuzzleBoard(ref.current, query.data);
-    board.onUpdate = () => forceUpdate((n) => n + 1);
-    boardRef.current = board;
-    forceUpdate((n) => n + 1);
-
-    return () => {
-      boardRef.current = null;
-    };
-  }, [ref, query.data]);
+    if (!boardRef.current) {
+      const board = new PuzzleBoard(ref.current, currentPuzzle);
+      board.onUpdate = () => forceUpdate((n) => n + 1);
+      boardRef.current = board;
+      forceUpdate((n) => n + 1);
+    } else {
+      boardRef.current.loadPuzzle(currentPuzzle);
+    }
+  }, [currentPuzzle]);
 
   useEffect(() => {
     const state = boardRef.current?.puzzleState;
@@ -79,21 +92,56 @@ const PuzzlePage = () => {
     updateSolveState();
   }, [boardRef.current?.puzzleState, updatedSolveState, id]);
 
-  if (query.isLoading) {
+  const renderComment = (comment: string) => {
+    return comment.split("\n").map((line, index) => {
+      const parts = line.split(/(<b>.*?<\/b>)/g);
+      return (
+        <p key={index} className="mb-[2px] max-w-[750px] font-[Roboto]! font-light text-(--gray-11) select-auto!">
+          {index > 1 && <span className="whitespace-pre">{"    "}</span>}
+          {index === 1 && <br />}
+          {parts.map((part, i) => {
+            const match = part.match(/^<b>(.*?)<\/b>$/);
+            return match ? (
+              <strong key={i} className="font-semibold text-(--gray-12)">
+                {match[1]}
+              </strong>
+            ) : (
+              <Fragment key={i}>{part}</Fragment>
+            );
+          })}
+        </p>
+      );
+    });
+  };
+
+  if (!currentPuzzle && query.isLoading) {
     return null;
   }
 
-  const puzzle = query.data;
-
-  if (!puzzle) {
+  if (!currentPuzzle) {
     return <p>Failed to load puzzle :(</p>;
   }
 
+  const puzzle = currentPuzzle;
+
   const board = boardRef.current;
 
+  console.log({ puzzle });
+
+  const solvedEntirePuzzle =
+    board?.puzzleState === "solved" && (!board.isInVariation || board.isInWinningUserVariation);
+
   return (
-    <div className="grid w-full">
-      <div className="flex w-full flex-col items-center">
+    <div className="grid w-full" ref={containerRef}>
+      <div className="flex w-full flex-col items-center" style={{ transform: "translateX(calc(var(--sidebar-width, 0px) / -2))" }}>
+        {collectionId && (
+          <>
+            <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
+              Back to collection
+            </Button>
+          </>
+        )}
+        <Spacer size="12" />
         <div className="flex w-full max-w-[500px] items-center justify-between gap-4">
           <IconButton
             isDisabled={!puzzle.previousPuzzleId}
@@ -134,12 +182,15 @@ const PuzzlePage = () => {
           {board?.puzzleState === "findmove" && `Find the best move for ${board?.playerSide}`}
           {board?.puzzleState === "correct" && "Correct!"}
           {board?.puzzleState === "wrong" && "Wrong move."}
-          {board?.puzzleState === "solved" && !board.isInVariation && "You solved the puzzle!"}
-          {board?.puzzleState === "solved" && board.isInVariation && "Variation solved."}
+          {solvedEntirePuzzle && "You solved the puzzle!"}
+          {board?.puzzleState === "solved" &&
+            board.isInVariation &&
+            !board.isInWinningUserVariation &&
+            "Variation solved."}
           {board?.puzzleState === "badmove" && "Wrong move."}
           {board?.puzzleState === "goodmove" && "Possible move, but find something else!"}
         </p>
-        {board?.isInVariation && (
+        {board?.isInVariation && !board.isInWinningUserVariation && (
           <>
             <Spacer size="2" />
             <p className="text-xl text-(--blue-11)">Variation</p>
@@ -148,7 +199,14 @@ const PuzzlePage = () => {
 
         <Spacer size="4" />
 
-        {board?.puzzleState === "solved" && board.isInVariation && (
+        {solvedEntirePuzzle && puzzle.comments !== undefined && (
+          <>
+            <Spacer size="4" />
+            {renderComment(puzzle.comments)}
+          </>
+        )}
+
+        {board?.puzzleState === "solved" && board.isInVariation && !board.isInWinningUserVariation && (
           <Button onClick={() => board.returnFromVariation()} className="w-[250px]">
             Return from variation
           </Button>
@@ -161,12 +219,6 @@ const PuzzlePage = () => {
         )}
 
         <Spacer size="8" />
-
-        {collectionId && (
-          <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
-            Back to collection
-          </Button>
-        )}
       </div>
     </div>
   );

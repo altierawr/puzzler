@@ -21,35 +21,40 @@ const CreatePage = () => {
 
     let currentPgnText = "";
     let wasLastLineMoves = false;
+    let wasLastLineEmpty = false;
     const lines = str.split(/\n/);
     for (const l of lines) {
       const line = l.trim();
 
-      if (!line && wasLastLineMoves) {
-        pgns.push(currentPgnText);
-        currentPgnText = "";
+      if (!line) {
         wasLastLineMoves = false;
-      } else if (!line) {
-        continue;
+        wasLastLineEmpty = true;
+
+        if (currentPgnText !== "") {
+          currentPgnText += "\n";
+        }
       } else if (line.startsWith("[")) {
-        currentPgnText += line + "\n";
-        wasLastLineMoves = false;
-      } else if (line === "*") {
-        if (wasLastLineMoves) {
-          currentPgnText += "\n" + line;
-          wasLastLineMoves = false;
+        if (wasLastLineEmpty) {
           pgns.push(currentPgnText);
           currentPgnText = "";
-        } else {
-          currentPgnText = "";
-          wasLastLineMoves = false;
         }
+
+        currentPgnText += line + "\n";
+        wasLastLineMoves = false;
       } else if ((line && wasLastLineMoves) || moveLineRegex.test(line) || sanMoveRegex.test(line)) {
         wasLastLineMoves = true;
-        currentPgnText += "\n" + line;
+        currentPgnText += line + "\n";
       } else if (line) {
-        console.log(line);
+        currentPgnText += line + "\n";
       }
+
+      if (line) {
+        wasLastLineEmpty = false;
+      }
+    }
+
+    if (currentPgnText !== "") {
+      pgns.push(currentPgnText);
     }
 
     let last = 0;
@@ -91,7 +96,7 @@ const CreatePage = () => {
     const resp = await request("/puzzles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pgns: pgns.join("\n") }),
+      body: JSON.stringify({ pgns: pgns }),
     });
 
     console.log(resp.status);

@@ -68,8 +68,8 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO puzzles (id, name, fen, moves, created_by, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO puzzles (id, name, fen, moves, comments, created_by, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`
 
 	id, err := utils.GenerateAlphabeticId(8)
@@ -77,7 +77,7 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 		return err
 	}
 
-	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.CreatedById, puzzle.CreatedAt}
+	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.Comments, puzzle.CreatedById, puzzle.CreatedAt}
 
 	if tx != nil {
 		_, err = tx.ExecContext(ctx, query, args...)
@@ -99,6 +99,7 @@ func (db *DB) GetCollectionPuzzle(collectionId string, id string) (*data.Puzzle,
 				p.name,
 				p.fen,
 				p.moves,
+				p.comments,
 				p.visibility,
 				p.created_at,
 				LAG(p.id) OVER (ORDER BY p.created_at ASC) AS previous_id,
@@ -119,6 +120,7 @@ func (db *DB) GetCollectionPuzzle(collectionId string, id string) (*data.Puzzle,
 		&puzzle.Name,
 		&puzzle.Fen,
 		&puzzle.Moves,
+		&puzzle.Comments,
 		&puzzle.Visibility,
 		&puzzle.CreatedAt,
 		&puzzle.PreviousPuzzleId,

@@ -33,19 +33,21 @@ export type Move = {
 export class PuzzleBoard {
   puzzleState: PuzzleState = "findmove";
   isInVariation: boolean = false;
+  isInWinningUserVariation: boolean = false;
   private moveTimeout: number | null = null;
-  private startPos: Chess;
-  private position: Chess;
-  private ground: Api;
-  private moveTreePos: Move | RootMove;
-  playerSide: "black" | "white";
+  private startPos!: Chess;
+  private position!: Chess;
+  private ground!: Api;
+  private moveTreePos!: Move | RootMove;
+  playerSide!: "black" | "white";
   onUpdate?: () => void;
 
   constructor(rootElement: HTMLDivElement, puzzle: Puzzle) {
     rootElement.addEventListener("mousedown", () => preloadSounds(), { once: true });
+    rootElement.addEventListener("touchstart", () => preloadSounds(), { once: true, passive: true });
     setVolume(0.3);
 
-    const OBSERVABLE_KEYS = new Set(["puzzleState", "isInVariation"]);
+    const OBSERVABLE_KEYS = new Set(["puzzleState", "isInVariation", "isInWinningUserVariation"]);
     const proxy = new Proxy(this, {
       set(target, key, value) {
         target[key as keyof typeof target] = value;
@@ -55,6 +57,20 @@ export class PuzzleBoard {
         return true;
       },
     });
+
+    proxy.loadPuzzle(puzzle, rootElement);
+
+    return proxy;
+  }
+
+  loadPuzzle(puzzle: Puzzle, rootElement?: HTMLDivElement) {
+    this.puzzleState = "findmove";
+    this.isInVariation = false;
+    this.isInWinningUserVariation = false;
+    if (this.moveTimeout) {
+      clearTimeout(this.moveTimeout);
+      this.moveTimeout = null;
+    }
 
     const pgnStr = `
       [FEN "${puzzle.fen}"]
@@ -83,45 +99,60 @@ export class PuzzleBoard {
       pgn.play(move);
     }
 
-    this.ground = Chessground(rootElement, {
+    const groundConfig: Config = {
       fen: puzzle.fen,
       orientation: setup.turn,
       turnColor: setup.turn,
-      disableContextMenu: true,
+      lastMove: undefined,
       movable: {
         free: false,
         color: setup.turn,
         dests: toDests(this.position),
         rookCastle: false,
       },
-      events: {
-        move: (orig, dest) => {
-          proxy.handleBoardMove(orig, dest);
-        },
+      premovable: {
+        enabled: true,
       },
-    });
+      animation: {
+        enabled: false,
+      },
+    };
 
-    return proxy;
+    if (rootElement) {
+      this.ground = Chessground(rootElement, {
+        ...groundConfig,
+        disableContextMenu: true,
+        events: {
+          move: (orig, dest) => {
+            this.handleBoardMove(orig, dest);
+          },
+        },
+      });
+    } else {
+      this.ground.set(groundConfig);
+    }
+
+    this.onUpdate?.();
   }
 
   private updateGround(lastMove?: ChessopsMove, config?: Config) {
+    const canMove = this.puzzleState === "findmove" || this.puzzleState === "correct";
+
     this.ground?.set({
       fen: makeFen(this.position.toSetup()),
       turnColor: this.position.turn,
       lastMove: lastMove && "from" in lastMove ? [makeSquare(lastMove.from), makeSquare(lastMove.to)] : [],
       movable: {
-        color: this.position.turn,
-        dests: toDests(this.position),
+        color: canMove ? this.playerSide : undefined,
+        dests: canMove && this.position.turn === this.playerSide ? toDests(this.position) : undefined,
+      },
+      premovable: {
+        enabled: true,
+      },
+      animation: {
+        enabled: true,
       },
       ...config,
-    });
-  }
-
-  private disableGroundMoves() {
-    this.ground.set({
-      movable: {
-        color: undefined,
-      },
     });
   }
 
@@ -224,7 +255,7 @@ export class PuzzleBoard {
         return;
       }
 
-      this.disableGroundMoves();
+      this.puzzleState = "correct";
       this.updateGround();
 
       this.moveTimeout = setTimeout(() => {
@@ -237,24 +268,30 @@ export class PuzzleBoard {
         }
 
         this.position.play(opponentMoveNormal);
+
+        this.moveTreePos = opponentMove!;
+
+        this.isInVariation = opponentMove!.sidelineDepth > 0;
+
         this.updateGround(opponentMoveNormal);
 
-        this.moveTreePos = opponentMove;
-
-        this.isInVariation = opponentMove.sidelineDepth > 0;
-
-        if (this.moveTreePos.children.length === 0) {
+        if (this.isCurrentPositionCheckmarked() || this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
-          this.disableGroundMoves();
         } else {
           this.puzzleState = "findmove";
         }
+
+        setTimeout(() => {
+          this.ground?.playPremove();
+        }, 50);
       }, 500);
       break;
     }
   }
 
   private handleBoardMove(orig: Key, dest: Key) {
+    this.ground.cancelPremove();
+
     const move: NormalMove = {
       from: parseSquare(orig)!,
       to: parseSquare(dest)!,
@@ -265,70 +302,83 @@ export class PuzzleBoard {
     }
 
     const san = makeSan(this.position, move);
+    console.log(this.moveTreePos);
+    console.log({ san });
     let isCorrectMove = false;
-    if (this.moveTreePos.children.length > 0) {
+    let playedMove: Move | null = null;
+    for (const childMove of this.moveTreePos.children) {
+      const isPlayedMove = childMove.san === san;
+      if (isPlayedMove) {
+        playedMove = childMove;
+      }
+
+      if (isPlayedMove && this.doesLineHaveCheckmark(childMove)) {
+        isCorrectMove = true;
+
+        if (!this.isInWinningUserVariation) {
+          this.isInWinningUserVariation =
+            "sidelineDepth" in this.moveTreePos && this.moveTreePos.sidelineDepth !== childMove.sidelineDepth;
+        }
+        break;
+      }
+    }
+
+    if (!isCorrectMove && this.moveTreePos.children.length > 0) {
       if (san === this.moveTreePos.children[0].san) {
         isCorrectMove = true;
       }
     }
 
-    if (isCorrectMove) {
+    if (isCorrectMove && playedMove) {
       const wasSolved = "san" in this.moveTreePos && this.moveTreePos.isSolved;
-      this.moveTreePos = this.moveTreePos.children[0];
+      this.moveTreePos = playedMove;
 
       if ("san" in this.moveTreePos) {
         this.moveTreePos.isSolved = wasSolved;
       }
     }
 
-    const isSolved = isCorrectMove && this.moveTreePos.children.length === 0;
-
-    this.playMove(move);
-    this.disableGroundMoves();
+    const isSolved = isCorrectMove && (this.isCurrentPositionCheckmarked() || this.moveTreePos.children.length === 0);
 
     if (this.moveTimeout) {
       clearTimeout(this.moveTimeout);
+      this.moveTimeout = null;
     }
 
     if (!isCorrectMove) {
-      let moveInTree: Move | null = null;
       let moveType: PuzzleState | null = null;
-      for (const move of this.moveTreePos.children) {
-        if (move.san === san) {
-          moveInTree = move;
 
-          if (move.nags?.includes(98)) {
-            moveType = "goodmove";
-          } else if (move.nags?.includes(97) && move.children.length > 0) {
-            moveType = "badmove";
-          }
-
-          break;
-        }
+      if (playedMove?.nags?.includes(98)) {
+        moveType = "goodmove";
+      } else if (playedMove?.nags?.includes(97) && playedMove?.children.length > 0) {
+        moveType = "badmove";
       }
 
-      if (moveInTree && moveType) {
+      if (playedMove && moveType) {
         this.puzzleState = moveType;
-        this.moveTreePos = moveInTree;
+        this.moveTreePos = playedMove;
+        this.playMove(move);
 
         if (moveType === "badmove") {
-          const followupMove = this.moveTreePos.children[0];
+          const followupMove = playedMove.children[0];
 
           setTimeout(() => {
             const move = parseSan(this.position, followupMove.san);
             if (!move) {
-              console.error("can't play move", moveInTree.san);
+              console.error("can't play move", playedMove.san);
               return;
             }
 
             this.moveTreePos = followupMove;
             this.playMove(move);
-            this.disableGroundMoves();
           }, 250);
         }
 
         return;
       }
+
+      this.puzzleState = "wrong";
+      this.playMove(move);
 
       const moveHistory = this.getSanMoveHistoryForPos(this.moveTreePos);
       this.position = this.startPos.clone();
@@ -346,15 +396,16 @@ export class PuzzleBoard {
         this.position.play(sanMove);
       }
 
-      this.puzzleState = "wrong";
       this.moveTimeout = setTimeout(() => {
         this.puzzleState = "findmove";
         this.updateGround(lastMove);
       }, 500);
     } else if (isSolved) {
       this.puzzleState = "solved";
+      this.playMove(move);
     } else {
       this.puzzleState = "correct";
+      this.playMove(move);
 
       this.moveTimeout = setTimeout(() => {
         const opponentMoves = this.moveTreePos.children;
@@ -363,10 +414,7 @@ export class PuzzleBoard {
         for (let i = opponentMoves.length - 1; i >= 0; i--) {
           const variation = opponentMoves[i];
 
-          if (
-            !variation.isSolved &&
-            (variation.sidelineDepth === 0 || this.doesVariationEndWithUserMove(variation, false))
-          ) {
+          if (!variation.isSolved) {
             opponentMove = variation;
             this.moveTreePos.children[i].isSolved = true;
 
@@ -390,7 +438,6 @@ export class PuzzleBoard {
         }
 
         this.position.play(opponentMoveNormal);
-        this.updateGround(opponentMoveNormal);
 
         const wasSolved = "san" in opponentMove && opponentMove.isSolved;
         this.moveTreePos = opponentMove;
@@ -398,14 +445,34 @@ export class PuzzleBoard {
           this.moveTreePos.isSolved = wasSolved;
         }
 
-        if (this.moveTreePos.children.length === 0) {
+        this.updateGround(opponentMoveNormal);
+        if (this.isCurrentPositionCheckmarked() || this.moveTreePos.children.length === 0) {
           this.puzzleState = "solved";
-          this.disableGroundMoves();
         } else {
           this.puzzleState = "findmove";
         }
+
+        setTimeout(() => {
+          this.ground?.playPremove();
+        }, 50);
       }, 500);
     }
+  }
+
+  private isCurrentPositionCheckmarked() {
+    return "nags" in this.moveTreePos && this.moveTreePos.nags?.includes(99);
+  }
+
+  private doesLineHaveCheckmark(pos: Move) {
+    while (pos.children.length > 0 && pos.children[0].sidelineDepth === pos.sidelineDepth) {
+      if (pos.nags?.includes(99)) {
+        return true;
+      }
+
+      pos = pos.children[0];
+    }
+
+    return pos.nags?.includes(99);
   }
 
   private doesVariationEndWithUserMove(variation: Move, isFirstMoveUserMove: boolean): boolean {

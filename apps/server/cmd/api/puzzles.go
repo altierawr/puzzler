@@ -90,7 +90,7 @@ func (app *application) importPuzzlePGNsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	var input struct {
-		PGNs string `json:"pgns"`
+		PGNs []string `json:"pgns"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -110,69 +110,77 @@ func (app *application) importPuzzlePGNsHandler(w http.ResponseWriter, r *http.R
 
 	puzzles := []data.Puzzle{}
 
-	puzzle := data.Puzzle{}
+	for _, pgn := range input.PGNs {
+		puzzle := data.Puzzle{}
 
-	scanner := bufio.NewScanner(strings.NewReader(input.PGNs + "\n\n"))
-	for scanner.Scan() {
-		l := scanner.Text()
-		line := strings.TrimSpace(l)
+		scanner := bufio.NewScanner(strings.NewReader(pgn))
+		finishedWithMoves := false
+		comments := ""
+		for scanner.Scan() {
+			l := scanner.Text()
+			line := strings.TrimSpace(l)
 
-		if len(line) == 0 || line == "\n" {
-			// check if we reached the end of the pgn
-			if len(puzzle.Moves) > 0 {
-				puzzle.CreatedById = *userID
-				puzzles = append(puzzles, puzzle)
-				puzzle = data.Puzzle{}
+			if s, found := strings.CutPrefix(line, "[White"); found {
+				split := strings.Split(s, "\"")
+				if len(split) != 3 {
+					app.badRequestResponse(w, r, errors.New("invalid puzzle name"))
+					return
+				}
+
+				puzzle.Name = split[1]
 			}
 
-			continue
+			if s, found := strings.CutPrefix(line, "[FEN"); found {
+				split := strings.Split(s, "\"")
+				if len(split) != 3 {
+					app.badRequestResponse(w, r, errors.New("invalid puzzle fen"))
+					return
+				}
+
+				puzzle.Fen = split[1]
+			}
+
+			// blank puzzle
+			if line == "*" && len(puzzle.Moves) == 0 {
+				app.logger.Warn("puzzle was empty", "puzzle", puzzle.Name)
+				puzzle = data.Puzzle{}
+				break
+			}
+
+			// other tags that we don't care about
+			if strings.HasPrefix(line, "[") {
+				continue
+			}
+
+			if len(line) == 0 && len(puzzle.Moves) > 0 {
+				finishedWithMoves = true
+			}
+
+			if len(line) == 0 {
+				continue
+			}
+
+			if !finishedWithMoves {
+				puzzle.Moves = puzzle.Moves + strings.ReplaceAll(line, "\n", "") + " "
+			} else {
+				comments = comments + line + "\n"
+			}
 		}
 
-		if strings.HasPrefix(line, "[") && len(puzzle.Moves) > 0 {
+		if len(comments) > 0 {
+			puzzle.Comments = &comments
+		}
+
+		if len(puzzle.Moves) > 0 {
 			puzzle.CreatedById = *userID
 			puzzles = append(puzzles, puzzle)
-			puzzle = data.Puzzle{}
 		}
 
-		if s, found := strings.CutPrefix(line, "[White"); found {
-			split := strings.Split(s, "\"")
-			if len(split) != 3 {
-				app.badRequestResponse(w, r, errors.New("invalid puzzle name"))
-				return
-			}
-
-			fmt.Println("found puzzle", split[1])
-			puzzle.Name = split[1]
+		if err := scanner.Err(); err != nil {
+			app.logger.Error("scan error", "err", err.Error())
+			app.serverErrorResponse(w, r, err)
+			return
 		}
-
-		if s, found := strings.CutPrefix(line, "[FEN"); found {
-			split := strings.Split(s, "\"")
-			if len(split) != 3 {
-				app.badRequestResponse(w, r, errors.New("invalid puzzle fen"))
-				return
-			}
-
-			puzzle.Fen = split[1]
-		}
-
-		// blank puzzle
-		if line == "*" && len(puzzle.Moves) == 0 {
-			puzzle = data.Puzzle{}
-			continue
-		}
-
-		// other tags that we don't care about
-		if strings.HasPrefix(line, "[") {
-			continue
-		}
-
-		puzzle.Moves = puzzle.Moves + strings.ReplaceAll(line, "\n", "") + " "
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scan error:", err)
-		app.serverErrorResponse(w, r, err)
-		return
 	}
 
 	fmt.Println("found", len(puzzles), "puzzles")

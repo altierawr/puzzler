@@ -1,5 +1,5 @@
 import { Spacer, Toast } from "@awlt/design";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Outlet } from "react-router";
 
 import Sidebar from "../components/sidebar";
@@ -7,15 +7,29 @@ import useScrollRestoration from "../hooks/useScrollRestoration";
 
 const AppRoot = () => {
   const scrollRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const flexRef = useRef<HTMLDivElement>(null);
   useScrollRestoration({
     scrollRef,
   });
 
+  useEffect(() => {
+    if (!sidebarRef.current || !flexRef.current) return;
+    const observer = new ResizeObserver(() => {
+      const width = sidebarRef.current?.getBoundingClientRect().width ?? 0;
+      flexRef.current?.style.setProperty("--sidebar-width", `${width}px`);
+    });
+    observer.observe(sidebarRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       <div className="relative h-dvh bg-(--gray-1) text-(--gray-12)">
-        <div className="flex h-full w-full">
-          <Sidebar />
+        <div className="flex h-full w-full" ref={flexRef}>
+          <div ref={sidebarRef} className="flex-none">
+            <Sidebar />
+          </div>
 
           <div className="relative flex h-full w-full min-w-0 justify-center">
             <div className="relative h-full w-full max-w-[1800px]">

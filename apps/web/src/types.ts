@@ -3,6 +3,7 @@ export type Puzzle = {
   name: string;
   fen: string;
   moves: string;
+  comments?: string;
   solveStatus?: string;
   previousPuzzleId?: string;
   nextPuzzleId?: string;

@@ -86,6 +86,7 @@ func (db *DB) GetCollection(id string, userId uuid.UUID) (*data.Collection, erro
 	}
 	defer rows.Close()
 
+	collection.Puzzles = []data.Puzzle{}
 	for rows.Next() {
 		puzzle := data.Puzzle{}
 
