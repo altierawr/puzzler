@@ -475,18 +475,6 @@ export class PuzzleBoard {
     return pos.nags?.includes(99);
   }
 
-  private doesVariationEndWithUserMove(variation: Move, isFirstMoveUserMove: boolean): boolean {
-    let depth = variation.sidelineDepth;
-    let currentVariation = variation;
-    let n = 1;
-    while (currentVariation.children.length > 0 && currentVariation.children[0].sidelineDepth === depth) {
-      currentVariation = currentVariation.children[0];
-      n++;
-    }
-
-    return isFirstMoveUserMove ? n % 2 === 1 : n % 2 === 0;
-  }
-
   private playMove(move: ChessopsMove) {
     let isCapture = this.position.board.get(move.to) !== undefined;
 
