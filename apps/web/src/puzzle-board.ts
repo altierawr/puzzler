@@ -197,8 +197,8 @@ export class PuzzleBoard {
     }
 
     this.moveTreePos = targetMove;
-    this.updateGround();
     this.puzzleState = "findmove";
+    this.updateGround();
   }
 
   returnFromVariation() {
