@@ -331,6 +331,20 @@ cg-board piece.fading {
   background-image: url("/images/board/blue.svg");
 }
 
+.wood cg-board::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  border-radius: inherit;
+  box-shadow: inherit;
+  background-image: url("/images/board/wood.jpg");
+  filter: brightness(calc(113 / 100)) contrast(calc(40 / 100)) hue-rotate(calc(0 * 3.6deg));
+}
+
 .merida cg-board piece.pawn.white {
   background-image: url("/images/pieces/merida/wP.svg");
 }

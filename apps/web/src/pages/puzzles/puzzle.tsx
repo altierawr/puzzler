@@ -133,7 +133,10 @@ const PuzzlePage = () => {
 
   return (
     <div className="grid w-full" ref={containerRef}>
-      <div className="flex w-full flex-col items-center" style={{ transform: "translateX(calc(var(--sidebar-width, 0px) / -2))" }}>
+      <div
+        className="flex w-full flex-col items-center"
+        style={{ transform: "translateX(calc(var(--sidebar-width, 0px) / -2))" }}
+      >
         {collectionId && (
           <>
             <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
@@ -166,7 +169,7 @@ const PuzzlePage = () => {
           </IconButton>
         </div>
         <Spacer size="2" />
-        <div ref={ref} className="blue merida" />
+        <div ref={ref} className="wood merida" />
         <Spacer size="8" />
         <p
           className={clsx(
