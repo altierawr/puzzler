@@ -302,8 +302,6 @@ export class PuzzleBoard {
     }
 
     const san = makeSan(this.position, move);
-    console.log(this.moveTreePos);
-    console.log({ san });
     let isCorrectMove = false;
     let playedMove: Move | null = null;
     for (const childMove of this.moveTreePos.children) {
@@ -338,7 +336,12 @@ export class PuzzleBoard {
       }
     }
 
-    const isSolved = isCorrectMove && (this.isCurrentPositionCheckmarked() || this.moveTreePos.children.length === 0);
+    const isSolved =
+      isCorrectMove &&
+      (this.isCurrentPositionCheckmarked() ||
+        this.moveTreePos.children.length === 0 ||
+        ("sidelineDepth" in this.moveTreePos &&
+          this.moveTreePos.children[0].sidelineDepth !== this.moveTreePos.sidelineDepth));
 
     if (this.moveTimeout) {
       clearTimeout(this.moveTimeout);
@@ -414,7 +417,11 @@ export class PuzzleBoard {
         for (let i = opponentMoves.length - 1; i >= 0; i--) {
           const variation = opponentMoves[i];
 
-          if (!variation.isSolved) {
+          if (
+            !variation.isSolved &&
+            variation.children.length > 0 &&
+            variation.children[0].sidelineDepth === variation.sidelineDepth
+          ) {
             opponentMove = variation;
             this.moveTreePos.children[i].isSolved = true;
 
