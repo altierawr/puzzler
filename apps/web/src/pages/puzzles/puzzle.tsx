@@ -1,4 +1,4 @@
-import { Button, IconButton, Spacer } from "@awlt/design";
+import { Button, IconButton, Spacer, toastManager } from "@awlt/design";
 import clsx from "clsx";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -126,6 +126,15 @@ const PuzzlePage = () => {
 
   const board = boardRef.current;
 
+  const copyFen = () => {
+    navigator.clipboard.writeText(puzzle.fen);
+
+    toastManager.add({
+      title: "Copied FEN to clipoard",
+      type: "success",
+    });
+  };
+
   console.log({ puzzle });
 
   const solvedEntirePuzzle =
@@ -137,13 +146,19 @@ const PuzzlePage = () => {
         className="flex w-full flex-col items-center"
         style={{ transform: "translateX(calc(var(--sidebar-width, 0px) / -2))" }}
       >
-        {collectionId && (
-          <>
-            <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
-              Back to collection
-            </Button>
-          </>
-        )}
+        <div className="flex gap-2">
+          <Button color="gray" variant="soft" onClick={copyFen}>
+            Copy FEN
+          </Button>
+
+          {collectionId && (
+            <>
+              <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
+                Back to collection
+              </Button>
+            </>
+          )}
+        </div>
         <Spacer size="12" />
         <div className="flex w-full max-w-[500px] items-center justify-between gap-4">
           <IconButton
