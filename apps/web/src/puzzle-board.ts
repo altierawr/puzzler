@@ -466,6 +466,29 @@ export class PuzzleBoard {
     }
   }
 
+  showHint() {
+    if (
+      this.position.turn !== this.playerSide ||
+      this.puzzleState !== "findmove" ||
+      this.moveTreePos.children.length === 0
+    ) {
+      return;
+    }
+
+    const correctMove = this.moveTreePos.children[0];
+
+    const move = parseSan(this.position, correctMove.san);
+    if (!move || !("from" in move)) {
+      return;
+    }
+
+    this.ground.set({
+      drawable: {
+        shapes: [{ orig: makeSquare(move.from), brush: "green" }],
+      },
+    });
+  }
+
   private isCurrentPositionCheckmarked() {
     return "nags" in this.moveTreePos && this.moveTreePos.nags?.includes(99);
   }

@@ -151,6 +151,10 @@ const PuzzlePage = () => {
             Copy FEN
           </Button>
 
+          <Button color="gray" variant="soft" onClick={() => board?.showHint()}>
+            Show hint
+          </Button>
+
           {collectionId && (
             <>
               <Button color="gray" variant="soft" onClick={() => navigate(`/collections/${collectionId}`)}>
