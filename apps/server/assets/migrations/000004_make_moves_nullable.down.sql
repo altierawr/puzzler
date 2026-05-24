@@ -1,0 +1,1 @@
+ALTER TABLE puzzles ALTER COLUMN moves SET NOT NULL;

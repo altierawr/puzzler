@@ -136,3 +136,22 @@ func (app *application) getCollectionsHandler(w http.ResponseWriter, r *http.Req
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) deleteCollectionHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDStringParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	err = app.db.DeleteCollection(id)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, nil, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

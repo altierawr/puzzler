@@ -1,0 +1,2 @@
+ALTER TABLE puzzles DROP COLUMN type;
+DROP TYPE IF EXISTS puzzle_type;

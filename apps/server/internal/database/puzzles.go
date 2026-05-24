@@ -30,6 +30,7 @@ func (db *DB) InsertPuzzles(puzzles []data.Puzzle) error {
 		if err != nil {
 			return err
 		}
+		puzzles[i] = puzzle
 	}
 
 	return tx.Commit()
@@ -68,16 +69,17 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO puzzles (id, name, fen, moves, comments, created_by, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO puzzles (id, name, fen, moves, type, comments, created_by, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
 	id, err := utils.GenerateAlphabeticId(8)
 	if err != nil {
 		return err
 	}
+	puzzle.ID = id
 
-	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.Comments, puzzle.CreatedById, puzzle.CreatedAt}
+	args := []any{id, puzzle.Name, puzzle.Fen, puzzle.Moves, puzzle.Type, puzzle.Comments, puzzle.CreatedById, puzzle.CreatedAt}
 
 	if tx != nil {
 		_, err = tx.ExecContext(ctx, query, args...)
@@ -85,6 +87,24 @@ func (db *DB) InsertPuzzle(puzzle *data.Puzzle, tx *sqlx.Tx) error {
 		_, err = db.ExecContext(ctx, query, args...)
 	}
 
+	return err
+}
+
+func (db *DB) DeletePuzzle(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := db.ExecContext(ctx, `DELETE FROM puzzle_solves WHERE puzzles_id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.ExecContext(ctx, `DELETE FROM collections_puzzles WHERE puzzles_id = $1`, id)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.ExecContext(ctx, `DELETE FROM puzzles WHERE id = $1`, id)
 	return err
 }
 
@@ -99,6 +119,7 @@ func (db *DB) GetCollectionPuzzle(collectionId string, id string) (*data.Puzzle,
 				p.name,
 				p.fen,
 				p.moves,
+				p.type,
 				p.comments,
 				p.visibility,
 				p.created_at,
@@ -120,6 +141,7 @@ func (db *DB) GetCollectionPuzzle(collectionId string, id string) (*data.Puzzle,
 		&puzzle.Name,
 		&puzzle.Fen,
 		&puzzle.Moves,
+		&puzzle.Type,
 		&puzzle.Comments,
 		&puzzle.Visibility,
 		&puzzle.CreatedAt,

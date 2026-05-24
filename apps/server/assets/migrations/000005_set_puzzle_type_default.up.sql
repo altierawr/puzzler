@@ -1,0 +1,3 @@
+UPDATE puzzles SET type = 'pgn' WHERE type IS NULL;
+ALTER TABLE puzzles ALTER COLUMN type SET DEFAULT 'pgn';
+ALTER TABLE puzzles ALTER COLUMN type SET NOT NULL;

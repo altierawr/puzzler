@@ -2,7 +2,8 @@ export type Puzzle = {
   id: string;
   name: string;
   fen: string;
-  moves: string;
+  type: string;
+  moves?: string;
   comments?: string;
   solveStatus?: string;
   previousPuzzleId?: string;

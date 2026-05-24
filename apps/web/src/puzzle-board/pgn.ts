@@ -1,21 +1,14 @@
-import { Chessground } from "@lichess-org/chessground";
-import type { Api } from "@lichess-org/chessground/api";
-import type { Config } from "@lichess-org/chessground/config";
 import type { Key } from "@lichess-org/chessground/types";
-import { Chess } from "chessops/chess";
-import { makeFen, parseFen } from "chessops/fen";
 import { ChildNode, Node, parsePgn, startingPosition, type PgnNodeData } from "chessops/pgn";
 import { parseSan, makeSan } from "chessops/san";
-import type { Move as ChessopsMove } from "chessops/types";
-import type { NormalMove } from "chessops/types";
+import type { Move as ChessopsMove, NormalMove } from "chessops/types";
 import { makeSquare, parseSquare } from "chessops/util";
 
-import { isPromotion, toDests } from "@/utils/chess";
+import { isPromotion } from "@/utils/chess";
+import type { Puzzle } from "@/types";
+import { playCapture, playMove } from "@/utils/sounds";
 
-import type { Puzzle } from "./types";
-import { playCapture, playMove, preloadSounds, setVolume } from "./utils/sounds";
-
-export type PuzzleState = "findmove" | "correct" | "wrong" | "variation" | "solved" | "goodmove" | "badmove";
+import { BasePuzzleBoard } from "./base";
 
 export type RootMove = {
   children: Move[];
@@ -30,38 +23,8 @@ export type Move = {
   previousMove?: Move | RootMove;
 };
 
-export class PuzzleBoard {
-  puzzleState: PuzzleState = "findmove";
-  isInVariation: boolean = false;
-  isInWinningUserVariation: boolean = false;
-  private moveTimeout: number | null = null;
-  private startPos!: Chess;
-  private position!: Chess;
-  private ground!: Api;
+export class PgnPuzzleBoard extends BasePuzzleBoard {
   private moveTreePos!: Move | RootMove;
-  playerSide!: "black" | "white";
-  onUpdate?: () => void;
-
-  constructor(rootElement: HTMLDivElement, puzzle: Puzzle) {
-    rootElement.addEventListener("mousedown", () => preloadSounds(), { once: true });
-    rootElement.addEventListener("touchstart", () => preloadSounds(), { once: true, passive: true });
-    setVolume(0.3);
-
-    const OBSERVABLE_KEYS = new Set(["puzzleState", "isInVariation", "isInWinningUserVariation"]);
-    const proxy = new Proxy(this, {
-      set(target, key, value) {
-        target[key as keyof typeof target] = value;
-        if (OBSERVABLE_KEYS.has(key as string)) {
-          target.onUpdate?.();
-        }
-        return true;
-      },
-    });
-
-    proxy.loadPuzzle(puzzle, rootElement);
-
-    return proxy;
-  }
 
   loadPuzzle(puzzle: Puzzle, rootElement?: HTMLDivElement) {
     this.puzzleState = "findmove";
@@ -80,14 +43,11 @@ export class PuzzleBoard {
 
     console.log("puzzle", puzzle.fen);
 
-    const setup = parseFen(puzzle.fen).unwrap();
     const game = parsePgn(pgnStr)[0];
     const pgn = startingPosition(game.headers).unwrap();
 
-    this.startPos = Chess.fromSetup(setup).unwrap();
-    this.position = this.startPos.clone();
+    this.initGround(rootElement, puzzle.fen);
     this.moveTreePos = this.movesToTree(game.moves);
-    this.playerSide = setup.turn;
 
     for (const node of game.moves.mainline()) {
       const move = parseSan(pgn, node.san);
@@ -98,72 +58,7 @@ export class PuzzleBoard {
 
       pgn.play(move);
     }
-
-    const groundConfig: Config = {
-      fen: puzzle.fen,
-      orientation: setup.turn,
-      turnColor: setup.turn,
-      lastMove: undefined,
-      movable: {
-        free: false,
-        color: setup.turn,
-        dests: toDests(this.position),
-        rookCastle: false,
-      },
-      premovable: {
-        enabled: true,
-      },
-      animation: {
-        enabled: false,
-      },
-    };
-
-    if (rootElement) {
-      this.ground = Chessground(rootElement, {
-        ...groundConfig,
-        disableContextMenu: true,
-        events: {
-          move: (orig, dest) => {
-            this.handleBoardMove(orig, dest);
-          },
-        },
-      });
-    } else {
-      this.ground.set(groundConfig);
-    }
-
-    this.onUpdate?.();
   }
-
-  private updateGround(lastMove?: ChessopsMove, config?: Config) {
-    const canMove = this.puzzleState === "findmove" || this.puzzleState === "correct";
-
-    this.ground?.set({
-      fen: makeFen(this.position.toSetup()),
-      turnColor: this.position.turn,
-      lastMove: lastMove && "from" in lastMove ? [makeSquare(lastMove.from), makeSquare(lastMove.to)] : [],
-      movable: {
-        color: canMove ? this.playerSide : undefined,
-        dests: canMove && this.position.turn === this.playerSide ? toDests(this.position) : undefined,
-      },
-      premovable: {
-        enabled: true,
-      },
-      animation: {
-        enabled: true,
-      },
-      ...config,
-    });
-  }
-
-  // private enableGroundMoves() {
-  //   this.ground.set({
-  //     movable: {
-  //       color: this.position.turn,
-  //       dests: toDests(this.position),
-  //     },
-  //   });
-  // }
 
   returnFromGoodOrBadMove() {
     if (!("san" in this.moveTreePos)) {
@@ -289,7 +184,7 @@ export class PuzzleBoard {
     }
   }
 
-  private handleBoardMove(orig: Key, dest: Key) {
+  handleBoardMove(orig: Key, dest: Key) {
     this.ground.cancelPremove();
 
     const move: NormalMove = {
@@ -349,7 +244,7 @@ export class PuzzleBoard {
     }
 
     if (!isCorrectMove) {
-      let moveType: PuzzleState | null = null;
+      let moveType: "goodmove" | "badmove" | null = null;
 
       if (playedMove?.nags?.includes(98)) {
         moveType = "goodmove";
@@ -503,19 +398,6 @@ export class PuzzleBoard {
     }
 
     return pos.nags?.includes(99);
-  }
-
-  private playMove(move: ChessopsMove) {
-    let isCapture = this.position.board.get(move.to) !== undefined;
-
-    if (isCapture) {
-      playCapture();
-    } else {
-      playMove();
-    }
-
-    this.position.play(move);
-    this.updateGround(move);
   }
 
   private getSanMoveHistoryForPos(move: RootMove | Move): string[] {

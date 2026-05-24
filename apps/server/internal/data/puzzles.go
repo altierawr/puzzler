@@ -10,7 +10,8 @@ type Puzzle struct {
 	ID               string    `db:"id" json:"id"`
 	Name             string    `db:"name" json:"name"`
 	Fen              string    `db:"fen" json:"fen"`
-	Moves            string    `db:"moves" json:"moves"`
+	Moves            *string   `db:"moves" json:"moves"`
+	Type             string    `db:"type" json:"type"`
 	Comments         *string   `db:"comments" json:"comments,omitempty"`
 	Visibility       string    `db:"visibility" json:"visibility"`
 	SolveStatus      *string   `json:"solveStatus,omitempty"`

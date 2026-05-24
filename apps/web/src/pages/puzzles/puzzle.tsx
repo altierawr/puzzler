@@ -5,7 +5,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import usePuzzle from "@/hooks/usePuzzle";
-import { PuzzleBoard } from "@/puzzle-board";
+import useCurrentUser from "@/hooks/useCurrentUser";
+import { createPuzzleBoard, type PuzzleBoardType } from "@/puzzle-board";
 import type { Puzzle } from "@/types";
 import { request } from "@/utils/http";
 
@@ -16,11 +17,12 @@ const Wrapper = () => {
 const PuzzlePage = () => {
   const { id, collectionId } = useParams();
   const ref = useRef<HTMLDivElement>(null);
-  const boardRef = useRef<PuzzleBoard | null>(null);
+  const boardRef = useRef<PuzzleBoardType | null>(null);
   const [, forceUpdate] = useState(0);
   const [updatedSolveState, setUpdatedSolveState] = useState(false);
   const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle | null>(null);
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
 
   const query = usePuzzle(id, collectionId);
 
@@ -42,8 +44,9 @@ const PuzzlePage = () => {
     }
 
     if (!boardRef.current) {
-      const board = new PuzzleBoard(ref.current, currentPuzzle);
+      const board = createPuzzleBoard(ref.current, currentPuzzle);
       board.onUpdate = () => forceUpdate((n) => n + 1);
+      board.loadPuzzle(currentPuzzle, ref.current);
       boardRef.current = board;
       forceUpdate((n) => n + 1);
     } else {
@@ -135,6 +138,20 @@ const PuzzlePage = () => {
     });
   };
 
+  const deletePuzzle = async () => {
+    const resp = await request(`/puzzles/${id}`, { method: "DELETE" });
+    if (resp.ok) {
+      toastManager.add({ title: "Puzzle deleted", type: "success" });
+      if (collectionId) {
+        navigate(`/collections/${collectionId}`);
+      } else {
+        navigate("/");
+      }
+    } else {
+      toastManager.add({ title: "Failed to delete puzzle", type: "error" });
+    }
+  };
+
   console.log({ puzzle });
 
   const solvedEntirePuzzle =
@@ -161,6 +178,12 @@ const PuzzlePage = () => {
                 Back to collection
               </Button>
             </>
+          )}
+
+          {user?.isAdmin && (
+            <Button color="red" variant="soft" onClick={deletePuzzle}>
+              Delete puzzle
+            </Button>
           )}
         </div>
         <Spacer size="12" />
