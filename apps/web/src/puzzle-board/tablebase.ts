@@ -41,7 +41,7 @@ export class TablebasePuzzleBoard extends BasePuzzleBoard {
 
   private async fetchTablebase(fen: string) {
     try {
-      const resp = await fetch(`http://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(fen)}`);
+      const resp = await fetch(`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(fen)}`);
       if (resp.ok) {
         this.currentTablebaseData = await resp.json();
       } else {
@@ -136,7 +136,7 @@ export class TablebasePuzzleBoard extends BasePuzzleBoard {
 
     // Opponent's turn
     const newFen = makeFen(this.position.toSetup());
-    const opponentResp = await fetch(`http://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(newFen)}`);
+    const opponentResp = await fetch(`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(newFen)}`);
     if (!opponentResp.ok) {
       console.error("Failed to fetch opponent tablebase move");
       return;
