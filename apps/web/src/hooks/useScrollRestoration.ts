@@ -54,8 +54,13 @@ const useScrollRestoration = ({ scrollRef, id, dimension = ScrollDimension.VERTI
         scrollContainer[scrollProperty] = savedPosition;
       }
     } else {
-      // New navigation - scroll to start
-      scrollContainer[scrollProperty] = 0;
+      // New navigation - scroll to start unless navigating between puzzles
+      const isPuzzlePath = (path: string) =>
+        /^\/puzzles\/[^/]+$/.test(path) || /^\/collections\/[^/]+\/puzzles\/[^/]+$/.test(path);
+
+      if (!(isPuzzlePath(currentKeyRef.current) && isPuzzlePath(key))) {
+        scrollContainer[scrollProperty] = 0;
+      }
     }
 
     currentKeyRef.current = key;
